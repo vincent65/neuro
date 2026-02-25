@@ -7,3 +7,5 @@
 .pytest_cache
 .pytest_cache
 *.tar
+.venv-decode
+.venv
