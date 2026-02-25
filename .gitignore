@@ -1,0 +1,9 @@
+.cursor
+.env
+.vscode
+.idea
+.pytest_cache
+.DS_Store
+.pytest_cache
+.pytest_cache
+*.tar
