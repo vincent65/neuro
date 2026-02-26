@@ -1,0 +1,21 @@
+\begin{table}[ht]
+\centering
+\caption{Method comparison on smoke test (40 utterances).}
+\begin{tabular}{lcccccc}
+\hline
+Method & WER & 95\% CI & CER & Oracle WER & Gap Closed & Time (s) \\
+\hline
+ngram\_top1 & 0.1667 & [0.112, 0.226] & 0.1056 & 0.0426 & 0.000 & 0.32 \\
+llm\_rescore\_no\_rag & 0.1473 & [0.095, 0.202] & 0.0883 & 0.0426 & 0.156 & 8.85 \\
+always\_on\_rag & 0.1550 & [0.100, 0.217] & 0.0930 & 0.0426 & 0.094 & 38.47 \\
+context\_only & 0.1550 & [0.099, 0.215] & 0.0898 & 0.0426 & 0.094 & 30.82 \\
+confusion\_rag & 0.1589 & [0.102, 0.219] & 0.0961 & 0.0426 & 0.062 & 27.39 \\
+\hline
+\end{tabular}
+\end{table}
+
+% ConfusionRAG-specific metrics
+% High-uncertainty WER: 0.22413793103448276
+% Rare-word WER: 0.19318181818181818
+% Mode breakdown: {'kept_top1': 0.1056338028169014, 'nbest_rescore': 0.22413793103448276}
+% Faithfulness: {'changes': 5, 'correct': 2, 'incorrect': 3, 'accuracy': 0.4}

@@ -1,0 +1,65 @@
+{
+  "wer": 0.15891472868217055,
+  "wer_ci_95": [
+    0.10245901639344263,
+    0.21862384455763065
+  ],
+  "cer": 0.09613869188337273,
+  "top1_wer": 0.16666666666666666,
+  "oracle_wer": 0.04263565891472868,
+  "oracle_gap_closed": 0.06249999999999989,
+  "high_uncertainty_wer": 0.22413793103448276,
+  "rare_word_wer": 0.19318181818181818,
+  "faithfulness": {
+    "span_choice": {
+      "changes": 0,
+      "correct": 0,
+      "incorrect": 0,
+      "accuracy": 0.0
+    },
+    "nbest_rescore": {
+      "changes": 5,
+      "correct": 2,
+      "incorrect": 3,
+      "accuracy": 0.4
+    },
+    "total": {
+      "changes": 5,
+      "correct": 2,
+      "incorrect": 3,
+      "accuracy": 0.4
+    }
+  },
+  "mode_breakdown_wer": {
+    "kept_top1": 0.1056338028169014,
+    "nbest_rescore": 0.22413793103448276
+  },
+  "summary": {
+    "total_sentences": 40,
+    "sentences_with_uncertain_spans": 17,
+    "sentences_using_span_choice": 0,
+    "sentences_using_nbest_rescore": 17,
+    "sentences_kept_top1": 23,
+    "total_spans_evaluated": 90,
+    "total_spans_gated_uncertain": 42,
+    "total_retrievals": 42,
+    "total_llm_changes": 5,
+    "llm_change_accuracy": 0.4
+  },
+  "time_s": 27.385071277618408,
+  "config": {
+    "min_nbest": 2,
+    "gate_metric": "entropy",
+    "gate_threshold": 0.5,
+    "retrieval_top_k": 5,
+    "retrieval_context_window": 5,
+    "session_memory_size": 10,
+    "llm_mode": "nbest_rescore",
+    "llm_alpha": 0.5,
+    "acoustic_scale": 0.5,
+    "llm_length_penalty": 0.0,
+    "blank_penalty": 1.9459,
+    "trace_enabled": true,
+    "trace_dir": "/home/vincentyip/neuro/speechBCI/ConfusionRAG/traces_smoke"
+  }
+}

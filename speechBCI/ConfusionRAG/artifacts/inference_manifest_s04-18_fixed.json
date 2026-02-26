@@ -1,0 +1,16 @@
+{
+  "session_start": 4,
+  "session_end": 18,
+  "sessions_per_chunk": 1,
+  "memory_ceiling_gb": 110.0,
+  "max_utterances_per_shard": 128,
+  "batch_size": 2,
+  "dataset_buffer_size": 1,
+  "nbest": 100,
+  "beam": 18,
+  "acoustic_scale": 0.5,
+  "blank_penalty": 1.9459101490553132,
+  "output_type": "speech_sil",
+  "disable_rescore": true,
+  "chunks": []
+}

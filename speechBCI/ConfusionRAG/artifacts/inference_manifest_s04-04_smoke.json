@@ -1,0 +1,59 @@
+{
+  "session_start": 4,
+  "session_end": 4,
+  "sessions_per_chunk": 1,
+  "memory_ceiling_gb": 110.0,
+  "max_utterances_per_shard": 16,
+  "batch_size": 2,
+  "dataset_buffer_size": 1,
+  "nbest": 100,
+  "beam": 18,
+  "acoustic_scale": 0.5,
+  "blank_penalty": 1.9459101490553132,
+  "output_type": "speech_sil",
+  "disable_rescore": true,
+  "chunks": [
+    {
+      "session_start": 4,
+      "session_end": 4,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 92.60941696166992,
+      "peak_tree_rss_gb": 92.60941696166992,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 4,
+          "session_end": 4,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s04-04_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s04-04_part000.npy",
+          "rss_gb_before_flush": 92.608,
+          "rss_gb_after_flush": 92.608
+        },
+        {
+          "shard_index": 1,
+          "session_start": 4,
+          "session_end": 4,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s04-04_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s04-04_part001.npy",
+          "rss_gb_before_flush": 92.608,
+          "rss_gb_after_flush": 92.608
+        },
+        {
+          "shard_index": 2,
+          "session_start": 4,
+          "session_end": 4,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s04-04_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s04-04_part002.npy",
+          "rss_gb_before_flush": 92.609,
+          "rss_gb_after_flush": 92.609
+        }
+      ]
+    }
+  ]
+}
