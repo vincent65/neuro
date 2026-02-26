@@ -1,0 +1,13 @@
+{
+  "session_start": 4,
+  "session_end": 4,
+  "sessions_per_chunk": 1,
+  "memory_ceiling_gb": 100.0,
+  "max_utterances_per_shard": 16,
+  "batch_size": 2,
+  "dataset_buffer_size": 1,
+  "nbest": 3,
+  "beam": 4,
+  "disable_rescore": true,
+  "chunks": []
+}

@@ -1,0 +1,644 @@
+{
+  "session_start": 4,
+  "session_end": 18,
+  "sessions_per_chunk": 1,
+  "memory_ceiling_gb": 105.0,
+  "max_utterances_per_shard": 16,
+  "batch_size": 2,
+  "dataset_buffer_size": 1,
+  "nbest": 3,
+  "beam": 4,
+  "disable_rescore": true,
+  "chunks": [
+    {
+      "session_start": 4,
+      "session_end": 4,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 72.45263671875,
+      "peak_tree_rss_gb": 85.67520904541016,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 4,
+          "session_end": 4,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s04-04_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s04-04_part000.npy",
+          "rss_gb_before_flush": 72.133,
+          "rss_gb_after_flush": 72.134
+        },
+        {
+          "shard_index": 1,
+          "session_start": 4,
+          "session_end": 4,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s04-04_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s04-04_part001.npy",
+          "rss_gb_before_flush": 71.647,
+          "rss_gb_after_flush": 71.647
+        },
+        {
+          "shard_index": 2,
+          "session_start": 4,
+          "session_end": 4,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s04-04_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s04-04_part002.npy",
+          "rss_gb_before_flush": 71.483,
+          "rss_gb_after_flush": 71.483
+        }
+      ]
+    },
+    {
+      "session_start": 5,
+      "session_end": 5,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 68.47936248779297,
+      "peak_tree_rss_gb": 85.67521286010742,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 5,
+          "session_end": 5,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s05-05_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s05-05_part000.npy",
+          "rss_gb_before_flush": 68.182,
+          "rss_gb_after_flush": 68.183
+        },
+        {
+          "shard_index": 1,
+          "session_start": 5,
+          "session_end": 5,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s05-05_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s05-05_part001.npy",
+          "rss_gb_before_flush": 67.813,
+          "rss_gb_after_flush": 67.813
+        },
+        {
+          "shard_index": 2,
+          "session_start": 5,
+          "session_end": 5,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s05-05_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s05-05_part002.npy",
+          "rss_gb_before_flush": 67.688,
+          "rss_gb_after_flush": 67.688
+        }
+      ]
+    },
+    {
+      "session_start": 6,
+      "session_end": 6,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 79.43185043334961,
+      "peak_tree_rss_gb": 85.66807174682617,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 6,
+          "session_end": 6,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s06-06_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s06-06_part000.npy",
+          "rss_gb_before_flush": 79.099,
+          "rss_gb_after_flush": 79.099
+        },
+        {
+          "shard_index": 1,
+          "session_start": 6,
+          "session_end": 6,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s06-06_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s06-06_part001.npy",
+          "rss_gb_before_flush": 78.733,
+          "rss_gb_after_flush": 78.733
+        },
+        {
+          "shard_index": 2,
+          "session_start": 6,
+          "session_end": 6,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s06-06_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s06-06_part002.npy",
+          "rss_gb_before_flush": 78.61,
+          "rss_gb_after_flush": 78.61
+        }
+      ]
+    },
+    {
+      "session_start": 7,
+      "session_end": 7,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 72.57126235961914,
+      "peak_tree_rss_gb": 85.65772247314453,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 7,
+          "session_end": 7,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s07-07_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s07-07_part000.npy",
+          "rss_gb_before_flush": 72.129,
+          "rss_gb_after_flush": 72.13
+        },
+        {
+          "shard_index": 1,
+          "session_start": 7,
+          "session_end": 7,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s07-07_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s07-07_part001.npy",
+          "rss_gb_before_flush": 71.806,
+          "rss_gb_after_flush": 71.806
+        },
+        {
+          "shard_index": 2,
+          "session_start": 7,
+          "session_end": 7,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s07-07_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s07-07_part002.npy",
+          "rss_gb_before_flush": 71.63,
+          "rss_gb_after_flush": 71.63
+        }
+      ]
+    },
+    {
+      "session_start": 8,
+      "session_end": 8,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 74.91319274902344,
+      "peak_tree_rss_gb": 85.68244552612305,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 8,
+          "session_end": 8,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s08-08_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s08-08_part000.npy",
+          "rss_gb_before_flush": 74.038,
+          "rss_gb_after_flush": 74.038
+        },
+        {
+          "shard_index": 1,
+          "session_start": 8,
+          "session_end": 8,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s08-08_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s08-08_part001.npy",
+          "rss_gb_before_flush": 73.182,
+          "rss_gb_after_flush": 73.182
+        },
+        {
+          "shard_index": 2,
+          "session_start": 8,
+          "session_end": 8,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s08-08_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s08-08_part002.npy",
+          "rss_gb_before_flush": 72.907,
+          "rss_gb_after_flush": 72.907
+        }
+      ]
+    },
+    {
+      "session_start": 9,
+      "session_end": 9,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 84.01272201538086,
+      "peak_tree_rss_gb": 91.14613342285156,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 9,
+          "session_end": 9,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s09-09_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s09-09_part000.npy",
+          "rss_gb_before_flush": 83.792,
+          "rss_gb_after_flush": 83.793
+        },
+        {
+          "shard_index": 1,
+          "session_start": 9,
+          "session_end": 9,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s09-09_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s09-09_part001.npy",
+          "rss_gb_before_flush": 83.572,
+          "rss_gb_after_flush": 83.572
+        },
+        {
+          "shard_index": 2,
+          "session_start": 9,
+          "session_end": 9,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s09-09_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s09-09_part002.npy",
+          "rss_gb_before_flush": 83.455,
+          "rss_gb_after_flush": 83.455
+        }
+      ]
+    },
+    {
+      "session_start": 10,
+      "session_end": 10,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 82.39626693725586,
+      "peak_tree_rss_gb": 91.14791870117188,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 10,
+          "session_end": 10,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s10-10_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s10-10_part000.npy",
+          "rss_gb_before_flush": 82.194,
+          "rss_gb_after_flush": 82.194
+        },
+        {
+          "shard_index": 1,
+          "session_start": 10,
+          "session_end": 10,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s10-10_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s10-10_part001.npy",
+          "rss_gb_before_flush": 81.864,
+          "rss_gb_after_flush": 81.865
+        },
+        {
+          "shard_index": 2,
+          "session_start": 10,
+          "session_end": 10,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s10-10_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s10-10_part002.npy",
+          "rss_gb_before_flush": 81.726,
+          "rss_gb_after_flush": 81.726
+        }
+      ]
+    },
+    {
+      "session_start": 11,
+      "session_end": 11,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 83.2868537902832,
+      "peak_tree_rss_gb": 91.18040466308594,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 11,
+          "session_end": 11,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s11-11_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s11-11_part000.npy",
+          "rss_gb_before_flush": 82.952,
+          "rss_gb_after_flush": 82.952
+        },
+        {
+          "shard_index": 1,
+          "session_start": 11,
+          "session_end": 11,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s11-11_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s11-11_part001.npy",
+          "rss_gb_before_flush": 82.624,
+          "rss_gb_after_flush": 82.624
+        },
+        {
+          "shard_index": 2,
+          "session_start": 11,
+          "session_end": 11,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s11-11_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s11-11_part002.npy",
+          "rss_gb_before_flush": 82.498,
+          "rss_gb_after_flush": 82.498
+        }
+      ]
+    },
+    {
+      "session_start": 12,
+      "session_end": 12,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 87.08141326904297,
+      "peak_tree_rss_gb": 91.15813064575195,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 12,
+          "session_end": 12,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s12-12_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s12-12_part000.npy",
+          "rss_gb_before_flush": 86.826,
+          "rss_gb_after_flush": 86.827
+        },
+        {
+          "shard_index": 1,
+          "session_start": 12,
+          "session_end": 12,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s12-12_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s12-12_part001.npy",
+          "rss_gb_before_flush": 86.594,
+          "rss_gb_after_flush": 86.594
+        },
+        {
+          "shard_index": 2,
+          "session_start": 12,
+          "session_end": 12,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s12-12_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s12-12_part002.npy",
+          "rss_gb_before_flush": 86.487,
+          "rss_gb_after_flush": 86.487
+        }
+      ]
+    },
+    {
+      "session_start": 13,
+      "session_end": 13,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 88.27266693115234,
+      "peak_tree_rss_gb": 90.90513610839844,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 13,
+          "session_end": 13,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s13-13_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s13-13_part000.npy",
+          "rss_gb_before_flush": 87.99,
+          "rss_gb_after_flush": 87.99
+        },
+        {
+          "shard_index": 1,
+          "session_start": 13,
+          "session_end": 13,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s13-13_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s13-13_part001.npy",
+          "rss_gb_before_flush": 87.542,
+          "rss_gb_after_flush": 87.542
+        },
+        {
+          "shard_index": 2,
+          "session_start": 13,
+          "session_end": 13,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s13-13_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s13-13_part002.npy",
+          "rss_gb_before_flush": 87.417,
+          "rss_gb_after_flush": 87.415
+        }
+      ]
+    },
+    {
+      "session_start": 14,
+      "session_end": 14,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 92.5454330444336,
+      "peak_tree_rss_gb": 92.5454330444336,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 14,
+          "session_end": 14,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s14-14_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s14-14_part000.npy",
+          "rss_gb_before_flush": 92.544,
+          "rss_gb_after_flush": 92.544
+        },
+        {
+          "shard_index": 1,
+          "session_start": 14,
+          "session_end": 14,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s14-14_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s14-14_part001.npy",
+          "rss_gb_before_flush": 92.545,
+          "rss_gb_after_flush": 92.545
+        },
+        {
+          "shard_index": 2,
+          "session_start": 14,
+          "session_end": 14,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s14-14_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s14-14_part002.npy",
+          "rss_gb_before_flush": 92.545,
+          "rss_gb_after_flush": 92.545
+        }
+      ]
+    },
+    {
+      "session_start": 15,
+      "session_end": 15,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 92.52153396606445,
+      "peak_tree_rss_gb": 92.52153396606445,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 15,
+          "session_end": 15,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s15-15_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s15-15_part000.npy",
+          "rss_gb_before_flush": 92.522,
+          "rss_gb_after_flush": 92.522
+        },
+        {
+          "shard_index": 1,
+          "session_start": 15,
+          "session_end": 15,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s15-15_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s15-15_part001.npy",
+          "rss_gb_before_flush": 92.522,
+          "rss_gb_after_flush": 92.522
+        },
+        {
+          "shard_index": 2,
+          "session_start": 15,
+          "session_end": 15,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s15-15_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s15-15_part002.npy",
+          "rss_gb_before_flush": 92.517,
+          "rss_gb_after_flush": 92.517
+        }
+      ]
+    },
+    {
+      "session_start": 16,
+      "session_end": 16,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 92.54135513305664,
+      "peak_tree_rss_gb": 92.54135513305664,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 16,
+          "session_end": 16,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s16-16_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s16-16_part000.npy",
+          "rss_gb_before_flush": 92.54,
+          "rss_gb_after_flush": 92.541
+        },
+        {
+          "shard_index": 1,
+          "session_start": 16,
+          "session_end": 16,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s16-16_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s16-16_part001.npy",
+          "rss_gb_before_flush": 92.541,
+          "rss_gb_after_flush": 92.541
+        },
+        {
+          "shard_index": 2,
+          "session_start": 16,
+          "session_end": 16,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s16-16_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s16-16_part002.npy",
+          "rss_gb_before_flush": 92.541,
+          "rss_gb_after_flush": 92.541
+        }
+      ]
+    },
+    {
+      "session_start": 17,
+      "session_end": 17,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 92.52263641357422,
+      "peak_tree_rss_gb": 92.52263641357422,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 17,
+          "session_end": 17,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s17-17_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s17-17_part000.npy",
+          "rss_gb_before_flush": 92.522,
+          "rss_gb_after_flush": 92.522
+        },
+        {
+          "shard_index": 1,
+          "session_start": 17,
+          "session_end": 17,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s17-17_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s17-17_part001.npy",
+          "rss_gb_before_flush": 92.522,
+          "rss_gb_after_flush": 92.522
+        },
+        {
+          "shard_index": 2,
+          "session_start": 17,
+          "session_end": 17,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s17-17_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s17-17_part002.npy",
+          "rss_gb_before_flush": 92.523,
+          "rss_gb_after_flush": 92.523
+        }
+      ]
+    },
+    {
+      "session_start": 18,
+      "session_end": 18,
+      "status": "completed",
+      "worker_exit_code": 0,
+      "total_utterances": 40,
+      "peak_rss_gb": 92.5394058227539,
+      "peak_tree_rss_gb": 92.5394058227539,
+      "loss_type": "ctc",
+      "shards": [
+        {
+          "shard_index": 0,
+          "session_start": 18,
+          "session_end": 18,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s18-18_part000.npy",
+          "nbest_outputs": "nbest_outputs_test_s18-18_part000.npy",
+          "rss_gb_before_flush": 92.538,
+          "rss_gb_after_flush": 92.538
+        },
+        {
+          "shard_index": 1,
+          "session_start": 18,
+          "session_end": 18,
+          "utterances": 16,
+          "inference_out": "inference_out_test_s18-18_part001.npy",
+          "nbest_outputs": "nbest_outputs_test_s18-18_part001.npy",
+          "rss_gb_before_flush": 92.539,
+          "rss_gb_after_flush": 92.539
+        },
+        {
+          "shard_index": 2,
+          "session_start": 18,
+          "session_end": 18,
+          "utterances": 8,
+          "inference_out": "inference_out_test_s18-18_part002.npy",
+          "nbest_outputs": "nbest_outputs_test_s18-18_part002.npy",
+          "rss_gb_before_flush": 92.539,
+          "rss_gb_after_flush": 92.539
+        }
+      ]
+    }
+  ]
+}

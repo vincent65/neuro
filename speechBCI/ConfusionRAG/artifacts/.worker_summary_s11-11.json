@@ -1,0 +1,42 @@
+{
+  "status": "completed",
+  "session_start": 11,
+  "session_end": 11,
+  "memory_ceiling_gb": 100.0,
+  "max_utterances_per_shard": 16,
+  "shards": [
+    {
+      "shard_index": 0,
+      "session_start": 11,
+      "session_end": 11,
+      "utterances": 16,
+      "inference_out": "inference_out_test_s11-11_part000.npy",
+      "nbest_outputs": "nbest_outputs_test_s11-11_part000.npy",
+      "rss_gb_before_flush": 82.952,
+      "rss_gb_after_flush": 82.952
+    },
+    {
+      "shard_index": 1,
+      "session_start": 11,
+      "session_end": 11,
+      "utterances": 16,
+      "inference_out": "inference_out_test_s11-11_part001.npy",
+      "nbest_outputs": "nbest_outputs_test_s11-11_part001.npy",
+      "rss_gb_before_flush": 82.624,
+      "rss_gb_after_flush": 82.624
+    },
+    {
+      "shard_index": 2,
+      "session_start": 11,
+      "session_end": 11,
+      "utterances": 8,
+      "inference_out": "inference_out_test_s11-11_part002.npy",
+      "nbest_outputs": "nbest_outputs_test_s11-11_part002.npy",
+      "rss_gb_before_flush": 82.498,
+      "rss_gb_after_flush": 82.498
+    }
+  ],
+  "total_utterances": 40,
+  "peak_rss_gb": 83.2868537902832,
+  "loss_type": "ctc"
+}

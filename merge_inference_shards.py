@@ -95,6 +95,24 @@ def _concatenate_scalar_or_vector(arrays: List[np.ndarray]) -> np.ndarray:
     return np.concatenate(arrays, axis=0)
 
 
+def _normalize_nbest_entries(nbest_outputs: np.ndarray) -> List[Any]:
+    """
+    Normalize loaded n-best shard data into one Python object per utterance.
+
+    Some np.save/np.load object-array roundtrips may produce arrays with extra
+    dimensions (e.g., shape [N, 1, 3]) when tuple payloads are homogeneous.
+    We always interpret axis-0 as utterances and convert each element back to a
+    Python object/list for robust merging.
+    """
+    if nbest_outputs.ndim == 1:
+        return list(nbest_outputs)
+    normalized: List[Any] = []
+    for i in range(nbest_outputs.shape[0]):
+        item = nbest_outputs[i]
+        normalized.append(item.tolist() if hasattr(item, "tolist") else item)
+    return normalized
+
+
 def _two_pass_merge_inference(artifacts_dir: Path, shards: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not shards:
         raise ValueError("No shard entries available to merge.")
@@ -264,8 +282,9 @@ def main() -> None:
             raise FileNotFoundError(f"Missing nbest shard file: {nbest_path}")
         inference_out = np.load(inf_path, allow_pickle=True).item()
         nbest_outputs = np.load(nbest_path, allow_pickle=True)
+        nbest_entries = _normalize_nbest_entries(nbest_outputs)
         n_inf = len(inference_out.get("transcriptions", []))
-        n_nbest = len(nbest_outputs)
+        n_nbest = len(nbest_entries)
         if n_inf != n_nbest:
             raise ValueError(
                 f"Shard #{i} has length mismatch: len(transcriptions)={n_inf} vs len(nbest_outputs)={n_nbest}"
@@ -276,8 +295,10 @@ def main() -> None:
     write_idx = 0
     for shard in shard_records:
         nbest_outputs = np.load(artifacts_dir / shard["nbest_outputs"], allow_pickle=True)
-        end = write_idx + len(nbest_outputs)
-        nbest_merged[write_idx:end] = nbest_outputs
+        nbest_entries = _normalize_nbest_entries(nbest_outputs)
+        end = write_idx + len(nbest_entries)
+        for i, item in enumerate(nbest_entries):
+            nbest_merged[write_idx + i] = item
         write_idx = end
     if write_idx != nbest_total:
         raise RuntimeError(f"N-best merge count mismatch: wrote {write_idx}, expected {nbest_total}")

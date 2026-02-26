@@ -2,8 +2,10 @@ import argparse
 import gc
 import json
 import os
+import signal
 import subprocess
 import sys
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -46,6 +48,130 @@ def _save_json(path: str, payload: Dict[str, Any]) -> None:
 def _load_json(path: str) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def _proc_children_map() -> Dict[int, List[int]]:
+    children: Dict[int, List[int]] = {}
+    proc_dir = "/proc"
+    for entry in os.listdir(proc_dir):
+        if not entry.isdigit():
+            continue
+        stat_path = os.path.join(proc_dir, entry, "stat")
+        try:
+            with open(stat_path, "r", encoding="utf-8") as f:
+                stat = f.read().strip()
+            # /proc/<pid>/stat format: pid (comm) state ppid ...
+            rpar = stat.rfind(")")
+            rest = stat[rpar + 2 :].split()
+            ppid = int(rest[1])
+            pid = int(entry)
+            children.setdefault(ppid, []).append(pid)
+        except (FileNotFoundError, ProcessLookupError, PermissionError, IndexError, ValueError):
+            continue
+    return children
+
+
+def _proc_tree_pids(root_pid: int) -> List[int]:
+    children_map = _proc_children_map()
+    stack = [root_pid]
+    seen = set()
+    order: List[int] = []
+    while stack:
+        pid = stack.pop()
+        if pid in seen:
+            continue
+        seen.add(pid)
+        order.append(pid)
+        for c in children_map.get(pid, []):
+            stack.append(c)
+    return order
+
+
+def _read_pid_rss_kb(pid: int) -> int:
+    status_path = os.path.join("/proc", str(pid), "status")
+    try:
+        with open(status_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1])
+    except (FileNotFoundError, ProcessLookupError, PermissionError, ValueError):
+        return 0
+    return 0
+
+
+def _process_tree_rss_gb(root_pid: int) -> float:
+    total_kb = 0
+    for pid in _proc_tree_pids(root_pid):
+        total_kb += _read_pid_rss_kb(pid)
+    return total_kb / (1024.0 * 1024.0)
+
+
+def _terminate_process_tree(root_pid: int, grace_seconds: float = 5.0) -> None:
+    pids = _proc_tree_pids(root_pid)
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+    deadline = time.time() + grace_seconds
+    while time.time() < deadline:
+        alive = False
+        for pid in pids:
+            if os.path.exists(os.path.join("/proc", str(pid))):
+                alive = True
+                break
+        if not alive:
+            return
+        time.sleep(0.2)
+
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def _run_worker_with_watchdog(
+    cmd: List[str],
+    memory_ceiling_gb: float,
+    watchdog_limit_gb: Optional[float],
+    poll_seconds: float,
+    consecutive_breaches: int,
+) -> Tuple[int, float, Optional[str]]:
+    hard_limit_gb = watchdog_limit_gb if watchdog_limit_gb is not None else memory_ceiling_gb
+    proc = subprocess.Popen(cmd)
+    peak_tree_rss_gb = 0.0
+    watchdog_error: Optional[str] = None
+    breach_count = 0
+
+    while True:
+        rc = proc.poll()
+        if rc is not None:
+            break
+
+        tree_rss_gb = _process_tree_rss_gb(proc.pid)
+        peak_tree_rss_gb = max(peak_tree_rss_gb, tree_rss_gb)
+        if tree_rss_gb > hard_limit_gb:
+            breach_count += 1
+            print(
+                f"[watchdog] breach {breach_count}/{consecutive_breaches}: "
+                f"RSS={tree_rss_gb:.2f} GB > {hard_limit_gb:.2f} GB"
+            )
+            if breach_count >= consecutive_breaches:
+                watchdog_error = (
+                    f"Worker process tree exceeded watchdog limit for {consecutive_breaches} "
+                    f"consecutive polls: RSS={tree_rss_gb:.2f} GB > {hard_limit_gb:.2f} GB"
+                )
+                print(f"[watchdog] {watchdog_error}. Terminating worker tree.")
+                _terminate_process_tree(proc.pid)
+                proc.wait(timeout=15)
+                break
+        else:
+            breach_count = 0
+        time.sleep(max(0.2, poll_seconds))
+
+    return int(proc.returncode or 0), peak_tree_rss_gb, watchdog_error
 
 
 def _build_run_args(
@@ -183,6 +309,57 @@ def _ensure_under_memory_ceiling(memory_ceiling_gb: float, stage: str) -> float:
     return rss_gb
 
 
+def _build_lm_decoder_compat(
+    lm_dir: str,
+    nbest: int,
+    beam: float,
+    acoustic_scale: float,
+    disable_rescore: bool,
+):
+    """
+    Build decoder with full compatibility while honoring --disable-rescore.
+
+    Upstream build_lm_decoder() always loads G.fst and G_no_prune.fst when present,
+    even if decoding never calls Rescore(). For low-memory runs, that can dominate
+    RSS during decoder init. This wrapper keeps the same decoder options but omits
+    G and rescore graphs when rescoring is disabled.
+    """
+    if not disable_rescore:
+        return lmDecoderUtils.build_lm_decoder(
+            lm_dir,
+            acoustic_scale=acoustic_scale,
+            nbest=nbest,
+            beam=beam,
+        )
+
+    decode_opts = lmDecoderUtils.lm_decoder.DecodeOptions(
+        7000,   # max_active
+        200,    # min_active
+        float(beam),
+        8.0,    # lattice_beam
+        float(acoustic_scale),
+        1.0,    # ctc_blank_skip_threshold
+        0.0,    # length_penalty
+        int(nbest),
+    )
+    tlg_path = os.path.join(lm_dir, "TLG.fst")
+    words_path = os.path.join(lm_dir, "words.txt")
+    if not os.path.exists(tlg_path):
+        raise ValueError(f"TLG file not found at {tlg_path}")
+    if not os.path.exists(words_path):
+        raise ValueError(f"words file not found at {words_path}")
+
+    # Pass empty G paths so heavy LM/rescore FSTs are not loaded.
+    decode_resource = lmDecoderUtils.lm_decoder.DecodeResource(
+        tlg_path,
+        "",
+        "",
+        words_path,
+        "",
+    )
+    return lmDecoderUtils.lm_decoder.BrainSpeechDecoder(decode_resource, decode_opts)
+
+
 def _worker_main(args: argparse.Namespace) -> None:
     base = args.base
     ckpt_dir = f"{base}/derived/rnns/baselineRelease"
@@ -232,12 +409,15 @@ def _worker_main(args: argparse.Namespace) -> None:
         gc.collect()
         _ensure_under_memory_ceiling(args.memory_ceiling_gb, "after_nsd_init_cleanup")
 
-        decoder = lmDecoderUtils.build_lm_decoder(
-            lm_dir,
+        _ensure_under_memory_ceiling(args.memory_ceiling_gb, "before_lm_decoder_build")
+        decoder = _build_lm_decoder_compat(
+            lm_dir=lm_dir,
             acoustic_scale=0.5,
             nbest=args.nbest,
             beam=args.beam,
+            disable_rescore=bool(args.disable_rescore),
         )
+        _ensure_under_memory_ceiling(args.memory_ceiling_gb, "after_lm_decoder_build")
         loss_type = str(run_args["lossType"])
         summary["loss_type"] = loss_type
         buffer = _new_buffer()
@@ -397,6 +577,10 @@ def _orchestrator_main(args: argparse.Namespace) -> None:
         raise ValueError("--batch-size must be >= 1")
     if args.dataset_buffer_size < 1:
         raise ValueError("--dataset-buffer-size must be >= 1")
+    if args.watchdog_poll_seconds <= 0:
+        raise ValueError("--watchdog-poll-seconds must be > 0")
+    if args.watchdog_consecutive_breaches < 1:
+        raise ValueError("--watchdog-consecutive-breaches must be >= 1")
 
     base = args.base
     out_dir = f"{base}/speechBCI/ConfusionRAG/artifacts"
@@ -468,32 +652,39 @@ def _orchestrator_main(args: argparse.Namespace) -> None:
             cmd.append("--disable-rescore")
 
         print(f"\n=== Running isolated worker for sessions {chunk_start}..{chunk_end} ===")
-        proc = subprocess.run(cmd, check=False)
+        worker_rc, peak_tree_rss_gb, watchdog_error = _run_worker_with_watchdog(
+            cmd,
+            memory_ceiling_gb=args.memory_ceiling_gb,
+            watchdog_limit_gb=args.watchdog_limit_gb,
+            poll_seconds=args.watchdog_poll_seconds,
+            consecutive_breaches=args.watchdog_consecutive_breaches,
+        )
         if not os.path.exists(worker_summary_path):
-            raise RuntimeError(
-                f"Worker for chunk {chunk_start}..{chunk_end} did not produce summary file: "
-                f"{worker_summary_path}"
-            )
-        worker_summary = _load_json(worker_summary_path)
+            worker_summary = {"status": "failed"}
+        else:
+            worker_summary = _load_json(worker_summary_path)
         chunk_record = {
             "session_start": chunk_start,
             "session_end": chunk_end,
             "status": worker_summary.get("status", "failed"),
-            "worker_exit_code": int(proc.returncode),
+            "worker_exit_code": int(worker_rc),
             "total_utterances": int(worker_summary.get("total_utterances", 0)),
             "peak_rss_gb": float(worker_summary.get("peak_rss_gb", 0.0)),
+            "peak_tree_rss_gb": float(peak_tree_rss_gb),
             "loss_type": worker_summary.get("loss_type"),
             "shards": worker_summary.get("shards", []),
         }
         if "error" in worker_summary:
             chunk_record["error"] = worker_summary["error"]
+        if watchdog_error is not None:
+            chunk_record["error"] = watchdog_error
 
         _upsert_chunk(manifest, chunk_record)
         _save_json(manifest_path, manifest)
 
-        if proc.returncode != 0 or chunk_record["status"] != "completed":
+        if worker_rc != 0 or chunk_record["status"] != "completed":
             raise RuntimeError(
-                f"Chunk {chunk_start}..{chunk_end} failed with exit code {proc.returncode}. "
+                f"Chunk {chunk_start}..{chunk_end} failed with exit code {worker_rc}. "
                 f"Error: {chunk_record.get('error', 'unknown')}"
             )
 
@@ -556,8 +747,26 @@ def main():
         default=110.0,
         help="Abort early if process RSS exceeds this value.",
     )
-    parser.add_argument("--nbest", type=int, default=20, help="N-best size for LM decoder.")
-    parser.add_argument("--beam", type=int, default=10, help="Beam size for LM decoder.")
+    parser.add_argument(
+        "--watchdog-limit-gb",
+        type=float,
+        default=None,
+        help="Parent watchdog hard-kills worker process tree if RSS exceeds this GB value (default: memory-ceiling-gb).",
+    )
+    parser.add_argument(
+        "--watchdog-poll-seconds",
+        type=float,
+        default=2.0,
+        help="Parent watchdog polling interval in seconds.",
+    )
+    parser.add_argument(
+        "--watchdog-consecutive-breaches",
+        type=int,
+        default=3,
+        help="Kill worker only after this many consecutive watchdog limit breaches.",
+    )
+    parser.add_argument("--nbest", type=int, default=5, help="N-best size for LM decoder.")
+    parser.add_argument("--beam", type=int, default=6, help="Beam size for LM decoder.")
     parser.add_argument(
         "--disable-rescore",
         action="store_true",

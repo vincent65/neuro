@@ -1,0 +1,65 @@
+{
+  "wer": 0.9299293862031505,
+  "wer_ci_95": [
+    0.9204506323471583,
+    0.9391140038353337
+  ],
+  "cer": 0.7283434232250963,
+  "top1_wer": 0.9291146116241173,
+  "oracle_wer": 0.9046713742531233,
+  "oracle_gap_closed": -0.03333333333333258,
+  "high_uncertainty_wer": 0.9144523655217109,
+  "rare_word_wer": 0.9326488706365503,
+  "faithfulness": {
+    "span_choice": {
+      "changes": 0,
+      "correct": 0,
+      "incorrect": 0,
+      "accuracy": 0.0
+    },
+    "nbest_rescore": {
+      "changes": 94,
+      "correct": 7,
+      "incorrect": 87,
+      "accuracy": 0.07446808510638298
+    },
+    "total": {
+      "changes": 94,
+      "correct": 7,
+      "incorrect": 87,
+      "accuracy": 0.07446808510638298
+    }
+  },
+  "mode_breakdown_wer": {
+    "nbest_rescore": 0.9144523655217109,
+    "kept_top1": 0.94109396914446
+  },
+  "summary": {
+    "total_sentences": 600,
+    "sentences_with_uncertain_spans": 247,
+    "sentences_using_span_choice": 0,
+    "sentences_using_nbest_rescore": 247,
+    "sentences_kept_top1": 353,
+    "total_spans_evaluated": 750,
+    "total_spans_gated_uncertain": 606,
+    "total_retrievals": 606,
+    "total_llm_changes": 94,
+    "llm_change_accuracy": 0.07446808510638298
+  },
+  "time_s": 21.77534770965576,
+  "config": {
+    "min_nbest": 2,
+    "gate_metric": "entropy",
+    "gate_threshold": 0.5,
+    "retrieval_top_k": 5,
+    "retrieval_context_window": 5,
+    "session_memory_size": 10,
+    "llm_mode": "nbest_rescore",
+    "llm_alpha": 0.5,
+    "acoustic_scale": 0.5,
+    "llm_length_penalty": 0.0,
+    "blank_penalty": 1.9459,
+    "trace_enabled": true,
+    "trace_dir": "./traces"
+  }
+}
