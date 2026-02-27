@@ -40,12 +40,41 @@ from confusionrag.eval import (
 )
 from confusionrag.pipeline import decode_with_confusion_rag, _extract_transcriptions
 from confusionrag.retriever import Retriever
+from benchmarks.hf_utils import add_hf_model_args, load_hf_causal_lm
+
+
+def _validate_inputs(nbest_outputs, inference_out, reference, min_avg_nbest: int) -> None:
+    n_nbest = len(nbest_outputs)
+    n_ref = len(reference)
+    n_trans = len(inference_out.get("transcriptions", []))
+    if n_nbest != n_trans or n_nbest != n_ref:
+        raise ValueError(
+            "Input length mismatch: "
+            f"len(nbest_outputs)={n_nbest}, "
+            f"len(inference_out['transcriptions'])={n_trans}, "
+            f"len(reference)={n_ref}."
+        )
+
+    nbest_sizes = [len(nbest) for nbest in nbest_outputs]
+    if any(size == 0 for size in nbest_sizes):
+        empty = sum(1 for size in nbest_sizes if size == 0)
+        raise ValueError(f"Found {empty} empty N-best entries.")
+
+    avg_nbest = float(np.mean(nbest_sizes)) if nbest_sizes else 0.0
+    if min_avg_nbest > 0 and avg_nbest < float(min_avg_nbest):
+        raise ValueError(
+            f"Average N-best size is too small for quality benchmarking: {avg_nbest:.2f} "
+            f"(min required: {min_avg_nbest}). "
+            "Regenerate inference artifacts with a larger --nbest (e.g., 100), "
+            "or set --min_avg_nbest 0 to bypass this check."
+        )
 
 
 def _load_data(args):
     nbest_outputs = np.load(args.nbest_path, allow_pickle=True)
     inference_out = np.load(args.inf_path, allow_pickle=True).item()
     reference = _extract_transcriptions(inference_out)
+    _validate_inputs(nbest_outputs, inference_out, reference, args.min_avg_nbest)
 
     corpus = []
     if args.corpus_path and os.path.exists(args.corpus_path):
@@ -67,25 +96,7 @@ def _top1_from_nbest(nbest_outputs):
 
 
 def _build_llm(args):
-    if args.llm_name.startswith("facebook/opt"):
-        from confusionrag.constrained_llm import _rescore_with_llm
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-
-        tokenizer = AutoTokenizer.from_pretrained(args.llm_name)
-        tokenizer.padding_side = "right"
-        tokenizer.pad_token = tokenizer.eos_token
-        model = AutoModelForCausalLM.from_pretrained(
-            args.llm_name, device_map="auto", torch_dtype="auto"
-        )
-        return model, tokenizer
-    else:
-        from transformers import GPT2TokenizerFast, AutoModelForCausalLM
-
-        tokenizer = GPT2TokenizerFast.from_pretrained(args.llm_name)
-        tokenizer.padding_side = "right"
-        tokenizer.pad_token = tokenizer.eos_token
-        model = AutoModelForCausalLM.from_pretrained(args.llm_name)
-        return model, tokenizer
+    return load_hf_causal_lm(args.llm_name, args)
 
 
 def baseline_ngram_top1(nbest_outputs, reference):
@@ -102,11 +113,14 @@ def baseline_ngram_top1(nbest_outputs, reference):
     }
 
 
-def baseline_llm_rescore_no_rag(nbest_outputs, inference_out, reference, llm, tok):
+def baseline_llm_rescore_no_rag(
+    nbest_outputs, inference_out, reference, llm, tok, llm_batch_size: int = 0
+):
     """Baseline 2: LLM N-best rescoring, no retrieval."""
     cfg = ConfusionRAGConfig(
         llm_mode="nbest_rescore",
         gate_threshold=0.0,  # always triggers
+        llm_batch_size=llm_batch_size,
         trace_enabled=False,
     )
     result = decode_with_confusion_rag(
@@ -125,7 +139,9 @@ def baseline_llm_rescore_no_rag(nbest_outputs, inference_out, reference, llm, to
     }
 
 
-def baseline_always_on_rag(nbest_outputs, inference_out, reference, llm, tok, corpus):
+def baseline_always_on_rag(
+    nbest_outputs, inference_out, reference, llm, tok, corpus, llm_batch_size: int = 0
+):
     """Baseline 3: retrieval on every sentence, no gating."""
     if not corpus:
         raise ValueError(
@@ -134,6 +150,7 @@ def baseline_always_on_rag(nbest_outputs, inference_out, reference, llm, tok, co
     cfg = ConfusionRAGConfig(
         llm_mode="nbest_rescore",
         gate_threshold=0.0,
+        llm_batch_size=llm_batch_size,
         trace_enabled=False,
     )
     retriever = Retriever(corpus, top_k=cfg.retrieval_top_k)
@@ -153,7 +170,9 @@ def baseline_always_on_rag(nbest_outputs, inference_out, reference, llm, tok, co
     }
 
 
-def baseline_context_only(nbest_outputs, inference_out, reference, llm, tok):
+def baseline_context_only(
+    nbest_outputs, inference_out, reference, llm, tok, llm_batch_size: int = 0
+):
     """
     Baseline 4: context-only LLM N-best rescoring.
 
@@ -162,7 +181,7 @@ def baseline_context_only(nbest_outputs, inference_out, reference, llm, tok):
     """
     from confusionrag.constrained_llm import _build_evidence_prefix, _rescore_with_llm
 
-    cfg = ConfusionRAGConfig(trace_enabled=False)
+    cfg = ConfusionRAGConfig(trace_enabled=False, llm_batch_size=llm_batch_size)
     session_memory = deque(maxlen=cfg.session_memory_size)
     decoded = []
 
@@ -184,7 +203,11 @@ def baseline_context_only(nbest_outputs, inference_out, reference, llm, tok):
         evidence_prefix = _build_evidence_prefix(list(session_memory))
         texts_for_llm = [evidence_prefix + h for h in hypotheses]
         llm_scores = _rescore_with_llm(
-            llm, tok, texts_for_llm, length_penalty=cfg.llm_length_penalty
+            llm,
+            tok,
+            texts_for_llm,
+            length_penalty=cfg.llm_length_penalty,
+            max_batch_size=cfg.llm_batch_size,
         )
         combined = (
             cfg.llm_alpha * np.array(llm_scores)
@@ -215,6 +238,13 @@ def main():
     parser.add_argument("--corpus_path", default=None)
     parser.add_argument("--output_dir", default="./results")
     parser.add_argument("--llm_name", default="gpt2")
+    parser.add_argument(
+        "--min_avg_nbest",
+        type=int,
+        default=5,
+        help="Fail fast if the average N-best size is below this value (set 0 to disable).",
+    )
+    add_hf_model_args(parser)
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -234,21 +264,43 @@ def main():
 
     print("=== Baseline 2: LLM rescore (no RAG) ===")
     t0 = time.time()
-    r = baseline_llm_rescore_no_rag(nbest_outputs, inference_out, reference, llm, tok)
+    r = baseline_llm_rescore_no_rag(
+        nbest_outputs,
+        inference_out,
+        reference,
+        llm,
+        tok,
+        llm_batch_size=args.llm_batch_size,
+    )
     r["time_s"] = time.time() - t0
     results.append(r)
     print(f"  WER={r['wer']:.4f}  CER={r['cer']:.4f}  gap={r['oracle_gap_closed']:.3f}")
 
     print("=== Baseline 3: Always-on RAG ===")
     t0 = time.time()
-    r = baseline_always_on_rag(nbest_outputs, inference_out, reference, llm, tok, corpus)
+    r = baseline_always_on_rag(
+        nbest_outputs,
+        inference_out,
+        reference,
+        llm,
+        tok,
+        corpus,
+        llm_batch_size=args.llm_batch_size,
+    )
     r["time_s"] = time.time() - t0
     results.append(r)
     print(f"  WER={r['wer']:.4f}  CER={r['cer']:.4f}  gap={r['oracle_gap_closed']:.3f}")
 
     print("=== Baseline 4: Context-only ===")
     t0 = time.time()
-    r = baseline_context_only(nbest_outputs, inference_out, reference, llm, tok)
+    r = baseline_context_only(
+        nbest_outputs,
+        inference_out,
+        reference,
+        llm,
+        tok,
+        llm_batch_size=args.llm_batch_size,
+    )
     r["time_s"] = time.time() - t0
     results.append(r)
     print(f"  WER={r['wer']:.4f}  CER={r['cer']:.4f}  gap={r['oracle_gap_closed']:.3f}")

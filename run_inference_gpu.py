@@ -15,6 +15,10 @@ from omegaconf import OmegaConf
 import neuralDecoder.utils.lmDecoderUtils as lmDecoderUtils
 from neuralDecoder.neuralSequenceDecoder import NeuralSequenceDecoder
 
+LM_OUTPUT_TYPE = "speech_sil"
+LM_ACOUSTIC_SCALE = 0.5
+LM_BLANK_PENALTY = float(np.log(7))
+
 
 def _get_rss_gb() -> float:
     """Read current process RSS from /proc (Linux) in GB."""
@@ -204,36 +208,19 @@ def _build_run_args(
 
     selected_indices = list(range(sess_start, sess_end + 1))
 
-    def _slice_field(field_name: str):
-        if field_name not in dataset_cfg or dataset_cfg[field_name] is None:
-            return
-        values = list(dataset_cfg[field_name])
-        if len(values) == total_sessions:
-            dataset_cfg[field_name] = [values[i] for i in selected_indices]
+    # Keep original session->input-layer mapping from checkpoint args.yaml.
+    # Only gate validation sampling to selected sessions.
+    dataset_cfg["dataDir"] = [f"{base}/derived/tfRecords"] * total_sessions
+    dataset_cfg["datasetProbabilityVal"] = [0.0] * total_sessions
+    for idx in selected_indices:
+        dataset_cfg["datasetProbabilityVal"][idx] = 1.0
 
-    # Critical: slice session-level lists so upstream only builds datasets for this chunk.
-    for field in (
-        "sessions",
-        "dataDir",
-        "datasetProbabilityVal",
-        "datasetProbability",
-        "datasetToLayerMap",
-        "syntheticDataDir",
-        "labelDir",
-    ):
-        _slice_field(field)
-
-    # Force local tfRecords path for the selected sessions.
-    dataset_cfg["dataDir"] = [f"{base}/derived/tfRecords"] * len(selected_indices)
-
-    # In infer mode, only validation probability matters.
-    dataset_cfg["datasetProbabilityVal"] = [1.0] * len(selected_indices)
     if "datasetProbability" in dataset_cfg and dataset_cfg["datasetProbability"] is not None:
-        n = len(selected_indices)
-        dataset_cfg["datasetProbability"] = [1.0 / n] * n
-
-    # Keep mapping dense/contiguous to satisfy input layer construction logic.
-    dataset_cfg["datasetToLayerMap"] = list(range(len(selected_indices)))
+        probs = [0.0] * total_sessions
+        p = 1.0 / float(len(selected_indices))
+        for idx in selected_indices:
+            probs[idx] = p
+        dataset_cfg["datasetProbability"] = probs
 
     return cfg
 
@@ -412,7 +399,7 @@ def _worker_main(args: argparse.Namespace) -> None:
         _ensure_under_memory_ceiling(args.memory_ceiling_gb, "before_lm_decoder_build")
         decoder = _build_lm_decoder_compat(
             lm_dir=lm_dir,
-            acoustic_scale=0.5,
+            acoustic_scale=LM_ACOUSTIC_SCALE,
             nbest=args.nbest,
             beam=args.beam,
             disable_rescore=bool(args.disable_rescore),
@@ -511,9 +498,9 @@ def _worker_main(args: argparse.Namespace) -> None:
                 batch_nbest = lmDecoderUtils.nbest_with_lm_decoder(
                     decoder,
                     batch_inf,
-                    outputType="speech_sil",
+                    outputType=LM_OUTPUT_TYPE,
                     rescore=not args.disable_rescore,
-                    blankPenalty=np.log(7),
+                    blankPenalty=LM_BLANK_PENALTY,
                 )
                 buffer["nbest"].extend(batch_nbest)
 
@@ -600,6 +587,9 @@ def _orchestrator_main(args: argparse.Namespace) -> None:
             "dataset_buffer_size": args.dataset_buffer_size,
             "nbest": args.nbest,
             "beam": args.beam,
+            "acoustic_scale": LM_ACOUSTIC_SCALE,
+            "blank_penalty": LM_BLANK_PENALTY,
+            "output_type": LM_OUTPUT_TYPE,
             "disable_rescore": bool(args.disable_rescore),
             "chunks": [],
         }
@@ -765,8 +755,8 @@ def main():
         default=3,
         help="Kill worker only after this many consecutive watchdog limit breaches.",
     )
-    parser.add_argument("--nbest", type=int, default=5, help="N-best size for LM decoder.")
-    parser.add_argument("--beam", type=int, default=6, help="Beam size for LM decoder.")
+    parser.add_argument("--nbest", type=int, default=100, help="N-best size for LM decoder.")
+    parser.add_argument("--beam", type=int, default=18, help="Beam size for LM decoder.")
     parser.add_argument(
         "--disable-rescore",
         action="store_true",

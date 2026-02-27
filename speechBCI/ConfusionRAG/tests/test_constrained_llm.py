@@ -237,3 +237,97 @@ class TestNbestRescore:
             assert "old_lm_score" in entry
             assert "acoustic_score" in entry
             assert "combined_score" in entry
+
+    def test_margin_guard_blocks_small_margin_change(self):
+        cs = _make_confusion_result()
+        rr = _make_retrieval_results(cs)
+        st = SentenceTrace()
+
+        # With alpha=1 and these scores, hypothesis 1 wins by 0.2 over hyp 0.
+        with _mock_rescore([1.0, 1.2, -1.0]):
+            decoded = nbest_rescore_decode(
+                None, None, cs, rr, st,
+                alpha=1.0, acoustic_scale=0.0,
+                change_margin_threshold=0.5,
+            )
+
+        assert decoded == cs.nbest_hypotheses[0]
+        nbest_span = next(
+            (sp for sp in st.spans
+             if sp.llm_decision and sp.llm_decision.get("mode") == "nbest_rescore"),
+            None,
+        )
+        assert nbest_span is not None
+        assert nbest_span.llm_decision["change_blocked_by_margin_guard"] is True
+
+    def test_margin_guard_allows_large_margin_change(self):
+        cs = _make_confusion_result()
+        rr = _make_retrieval_results(cs)
+        st = SentenceTrace()
+
+        # Margin is 1.5 between best and second-best.
+        with _mock_rescore([0.0, 1.5, -1.0]):
+            decoded = nbest_rescore_decode(
+                None, None, cs, rr, st,
+                alpha=1.0, acoustic_scale=0.0,
+                change_margin_threshold=0.5,
+            )
+
+        assert decoded == cs.nbest_hypotheses[1]
+
+    def test_evidence_docs_capped_in_nbest_rescore(self):
+        cs = _make_confusion_result()
+        rr = {
+            0: RetrievalResult(
+                query="q0",
+                retrieved_docs=["doc-a", "doc-b", "doc-c"],
+                scores=[10.0, 9.0, 8.0],
+                retrieval_time_ms=1.0,
+            )
+        }
+        st = SentenceTrace()
+
+        with _mock_rescore([0.0] * len(cs.nbest_hypotheses)):
+            nbest_rescore_decode(
+                None, None, cs, rr, st,
+                evidence_max_docs=2,
+            )
+
+        nbest_span = next(
+            (sp for sp in st.spans
+             if sp.llm_decision and sp.llm_decision.get("mode") == "nbest_rescore"),
+            None,
+        )
+        assert nbest_span is not None
+        assert len(nbest_span.retrieval["retrieved_docs"]) == 2
+        assert nbest_span.llm_decision["evidence_docs_used"] == 2
+
+    def test_retrieval_quality_gate_falls_back_to_no_evidence(self):
+        cs = _make_confusion_result()
+        rr = {
+            0: RetrievalResult(
+                query="weak query",
+                retrieved_docs=["weak-doc-1", "weak-doc-2"],
+                scores=[0.2, 0.19],
+                retrieval_time_ms=1.0,
+            )
+        }
+        st = SentenceTrace()
+
+        with _mock_rescore([0.0] * len(cs.nbest_hypotheses)):
+            nbest_rescore_decode(
+                None, None, cs, rr, st,
+                retrieval_quality_gate_enabled=True,
+                retrieval_quality_min_top_score=1.0,
+                retrieval_quality_min_score_gap=0.5,
+                retrieval_quality_min_nonzero_docs=2,
+            )
+
+        nbest_span = next(
+            (sp for sp in st.spans
+             if sp.llm_decision and sp.llm_decision.get("mode") == "nbest_rescore"),
+            None,
+        )
+        assert nbest_span is not None
+        assert nbest_span.llm_decision["retrieval_quality_gate_passed"] is False
+        assert nbest_span.llm_decision["evidence_docs_used"] == 0

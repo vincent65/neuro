@@ -52,7 +52,7 @@ def _make_inference_out(n_sentences=5):
 
 
 def _mock_rescore(scores):
-    def _side_effect(model, tokenizer, texts, length_penalty=0.0):
+    def _side_effect(model, tokenizer, texts, length_penalty=0.0, max_batch_size=0):
         return [0.0] * len(texts)
     return patch(
         "confusionrag.constrained_llm._rescore_with_llm",

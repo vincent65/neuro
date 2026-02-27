@@ -198,6 +198,8 @@ def faithfulness_audit(trace: RunTrace) -> Dict[str, Any]:
                 continue
 
             mode = sp.llm_decision.get("mode", "unknown")
+            if mode not in results and mode != "total":
+                results[mode] = {"changes": 0, "correct": 0, "incorrect": 0}
             bucket = results.get(mode, results["total"])
 
             bucket["changes"] += 1

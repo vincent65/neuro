@@ -148,7 +148,13 @@ def decode_with_confusion_rag(
                 cs,
                 retrieval_results,
                 st,
+                evidence_max_docs=config.evidence_max_docs,
+                retrieval_quality_gate_enabled=config.retrieval_quality_gate_enabled,
+                retrieval_quality_min_top_score=config.retrieval_quality_min_top_score,
+                retrieval_quality_min_score_gap=config.retrieval_quality_min_score_gap,
+                retrieval_quality_min_nonzero_docs=config.retrieval_quality_min_nonzero_docs,
                 length_penalty=config.llm_length_penalty,
+                llm_batch_size=config.llm_batch_size,
             )
         else:
             decoded = nbest_rescore_decode(
@@ -159,7 +165,14 @@ def decode_with_confusion_rag(
                 st,
                 alpha=config.llm_alpha,
                 acoustic_scale=config.acoustic_scale,
+                change_margin_threshold=config.nbest_change_margin_threshold,
+                evidence_max_docs=config.evidence_max_docs,
+                retrieval_quality_gate_enabled=config.retrieval_quality_gate_enabled,
+                retrieval_quality_min_top_score=config.retrieval_quality_min_top_score,
+                retrieval_quality_min_score_gap=config.retrieval_quality_min_score_gap,
+                retrieval_quality_min_nonzero_docs=config.retrieval_quality_min_nonzero_docs,
                 length_penalty=config.llm_length_penalty,
+                llm_batch_size=config.llm_batch_size,
             )
 
         st.final_decoded = decoded

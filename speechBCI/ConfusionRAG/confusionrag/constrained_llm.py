@@ -28,6 +28,7 @@ def _rescore_with_llm(
     tokenizer,
     texts: List[str],
     length_penalty: float = 0.0,
+    max_batch_size: int = 0,
 ) -> List[float]:
     """
     Score each text string with the LLM.  Returns per-text log-prob scores
@@ -35,55 +36,111 @@ def _rescore_with_llm(
 
     Supports both TF (TFGPT2LMHeadModel) and PyTorch causal LM models.
     """
-    model_class = type(model).__name__
+    if not texts:
+        return []
 
-    if model_class.startswith("TF"):
-        import tensorflow as tf
-        inputs = tokenizer(texts, return_tensors="tf", padding=True)
-        outputs = model(inputs)
-        log_probs = tf.math.log(tf.nn.softmax(outputs["logits"], -1)).numpy()
-    else:
-        import torch
-        inputs = tokenizer(texts, return_tensors="pt", padding=True)
-        device = next(model.parameters()).device
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-        with torch.no_grad():
-            outputs = model(**inputs)
-            log_probs = torch.nn.functional.log_softmax(
-                outputs["logits"].float(), -1
-            ).cpu().numpy()
+    def _score_batch(batch_texts: List[str]) -> List[float]:
+        model_class = type(model).__name__
+
+        if model_class.startswith("TF"):
+            import tensorflow as tf
+            inputs = tokenizer(batch_texts, return_tensors="tf", padding=True)
+            outputs = model(inputs)
+            log_probs = tf.math.log(tf.nn.softmax(outputs["logits"], -1)).numpy()
+        else:
+            import torch
+            inputs = tokenizer(batch_texts, return_tensors="pt", padding=True)
+            device = next(model.parameters()).device
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            with torch.no_grad():
+                outputs = model(**inputs)
+                log_probs = torch.nn.functional.log_softmax(
+                    outputs["logits"].float(), -1
+                ).cpu().numpy()
+
+        batch_scores: List[float] = []
+        B, _, _ = log_probs.shape
+        for i in range(B):
+            attn = inputs["attention_mask"][i]
+            if hasattr(attn, "cpu"):
+                attn = attn.cpu().numpy()
+            elif hasattr(attn, "numpy"):
+                attn = attn.numpy()
+            n_tokens = int(np.sum(attn))
+
+            ids = inputs["input_ids"][i]
+            if hasattr(ids, "cpu"):
+                ids = ids.cpu().numpy()
+            elif hasattr(ids, "numpy"):
+                ids = ids.numpy()
+
+            score = 0.0
+            for j in range(1, n_tokens):
+                score += log_probs[i, j - 1, ids[j]]
+            batch_scores.append(score - n_tokens * length_penalty)
+        return batch_scores
+
+    if max_batch_size <= 0 or len(texts) <= max_batch_size:
+        return _score_batch(texts)
 
     scores: List[float] = []
-    B, T, _ = log_probs.shape
-    for i in range(B):
-        attn = inputs["attention_mask"][i]
-        if hasattr(attn, "numpy"):
-            attn = attn.numpy()
-        elif hasattr(attn, "cpu"):
-            attn = attn.cpu().numpy()
-        n_tokens = int(np.sum(attn))
-
-        ids = inputs["input_ids"][i]
-        if hasattr(ids, "numpy"):
-            ids = ids.numpy()
-        elif hasattr(ids, "cpu"):
-            ids = ids.cpu().numpy()
-
-        score = 0.0
-        for j in range(1, n_tokens):
-            score += log_probs[i, j - 1, ids[j]]
-        scores.append(score - n_tokens * length_penalty)
-
+    for start in range(0, len(texts), max_batch_size):
+        end = start + max_batch_size
+        scores.extend(_score_batch(texts[start:end]))
     return scores
 
 
 def _build_evidence_prefix(retrieved_docs: List[str], max_docs: int = 5) -> str:
     """Format retrieved documents into a prefix string for the LLM."""
-    docs = retrieved_docs[:max_docs]
+    docs = retrieved_docs[:max_docs] if max_docs > 0 else []
     if not docs:
         return ""
     lines = ["Context:"] + [f"- {d}" for d in docs] + [""]
     return "\n".join(lines)
+
+
+def _retrieval_quality_stats(
+    retrieval_results: Dict[int, RetrievalResult],
+) -> Dict[str, float]:
+    top_scores: List[float] = []
+    top_gaps: List[float] = []
+    nonzero_docs = 0
+    total_docs = 0
+
+    for rr in retrieval_results.values():
+        scores = list(rr.scores or [])
+        total_docs += len(scores)
+        nonzero_docs += sum(1 for s in scores if s > 0.0)
+        if scores:
+            sorted_scores = sorted(scores, reverse=True)
+            top_scores.append(float(sorted_scores[0]))
+            second = float(sorted_scores[1]) if len(sorted_scores) > 1 else 0.0
+            top_gaps.append(float(sorted_scores[0] - second))
+
+    return {
+        "n_retrievals": float(len(retrieval_results)),
+        "max_top_score": float(max(top_scores)) if top_scores else 0.0,
+        "median_top_gap": float(np.median(top_gaps)) if top_gaps else 0.0,
+        "nonzero_docs": float(nonzero_docs),
+        "total_docs": float(total_docs),
+    }
+
+
+def _passes_retrieval_quality_gate(
+    stats: Dict[str, float],
+    min_top_score: float,
+    min_score_gap: float,
+    min_nonzero_docs: int,
+) -> bool:
+    if stats["n_retrievals"] <= 0:
+        return False
+    if min_top_score > 0 and stats["max_top_score"] < min_top_score:
+        return False
+    if min_score_gap > 0 and stats["median_top_gap"] < min_score_gap:
+        return False
+    if min_nonzero_docs > 0 and stats["nonzero_docs"] < float(min_nonzero_docs):
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +153,13 @@ def span_choice_decode(
     confusion_result: ConfusionSetResult,
     retrieval_results: Dict[int, RetrievalResult],
     sentence_trace: SentenceTrace,
+    evidence_max_docs: int = 5,
+    retrieval_quality_gate_enabled: bool = False,
+    retrieval_quality_min_top_score: float = 0.0,
+    retrieval_quality_min_score_gap: float = 0.0,
+    retrieval_quality_min_nonzero_docs: int = 0,
     length_penalty: float = 0.0,
+    llm_batch_size: int = 0,
 ) -> str:
     """
     Span-choice decoding: keep top-1 hypothesis fixed except at uncertain
@@ -153,7 +216,23 @@ def span_choice_decode(
         rr = retrieval_results[span_idx]
         st.retrieval = rr.to_dict()
 
-        evidence_prefix = _build_evidence_prefix(rr.retrieved_docs)
+        docs_for_evidence = list(rr.retrieved_docs)
+        quality_gate_passed = True
+        if retrieval_quality_gate_enabled:
+            quality_stats = _retrieval_quality_stats({0: rr})
+            quality_gate_passed = _passes_retrieval_quality_gate(
+                quality_stats,
+                retrieval_quality_min_top_score,
+                retrieval_quality_min_score_gap,
+                retrieval_quality_min_nonzero_docs,
+            )
+            if not quality_gate_passed:
+                docs_for_evidence = []
+
+        evidence_prefix = _build_evidence_prefix(
+            docs_for_evidence,
+            max_docs=evidence_max_docs,
+        )
 
         candidate_texts = []
         for cand in span.candidates:
@@ -162,7 +241,13 @@ def span_choice_decode(
             full_sentence = " ".join(trial_words)
             candidate_texts.append(evidence_prefix + full_sentence)
 
-        llm_scores = _rescore_with_llm(model, tokenizer, candidate_texts, length_penalty)
+        llm_scores = _rescore_with_llm(
+            model,
+            tokenizer,
+            candidate_texts,
+            length_penalty=length_penalty,
+            max_batch_size=llm_batch_size,
+        )
         best_idx = int(np.argmax(llm_scores))
         selected = span.candidates[best_idx]
         top1_word = words[span.span_start] if span.span_start < len(words) else ""
@@ -177,6 +262,9 @@ def span_choice_decode(
             ],
             "selected": selected,
             "changed_from_top1": selected != top1_word,
+            "retrieval_quality_gate_enabled": retrieval_quality_gate_enabled,
+            "retrieval_quality_gate_passed": quality_gate_passed,
+            "evidence_docs_used": min(len(docs_for_evidence), max(evidence_max_docs, 0)),
             "change_was_correct": None,  # populated later if ground truth available
         }
         llm_applied = True
@@ -199,7 +287,14 @@ def nbest_rescore_decode(
     sentence_trace: SentenceTrace,
     alpha: float = 0.5,
     acoustic_scale: float = 0.5,
+    change_margin_threshold: float = 0.0,
+    evidence_max_docs: int = 5,
+    retrieval_quality_gate_enabled: bool = False,
+    retrieval_quality_min_top_score: float = 0.0,
+    retrieval_quality_min_score_gap: float = 0.0,
+    retrieval_quality_min_nonzero_docs: int = 0,
     length_penalty: float = 0.0,
+    llm_batch_size: int = 0,
 ) -> str:
     """
     N-best rescoring: score every hypothesis with the LLM conditioned on
@@ -231,20 +326,45 @@ def nbest_rescore_decode(
         return ""
 
     # Merge all retrieved evidence into one prefix
-    all_docs: List[str] = []
-    seen: set = set()
+    doc_to_score: Dict[str, float] = {}
     for rr in retrieval_results.values():
-        for doc in rr.retrieved_docs:
-            if doc not in seen:
-                all_docs.append(doc)
-                seen.add(doc)
-    evidence_prefix = _build_evidence_prefix(all_docs)
+        rr_scores = list(rr.scores or [])
+        for idx, doc in enumerate(rr.retrieved_docs):
+            score = rr_scores[idx] if idx < len(rr_scores) else 0.0
+            if score <= 0.0:
+                continue
+            if doc not in doc_to_score or score > doc_to_score[doc]:
+                doc_to_score[doc] = float(score)
+
+    sorted_doc_pairs = sorted(doc_to_score.items(), key=lambda x: x[1], reverse=True)
+    all_docs = [doc for doc, _ in sorted_doc_pairs]
+    quality_stats = _retrieval_quality_stats(retrieval_results)
+    quality_gate_passed = True
+    if retrieval_quality_gate_enabled:
+        quality_gate_passed = _passes_retrieval_quality_gate(
+            quality_stats,
+            retrieval_quality_min_top_score,
+            retrieval_quality_min_score_gap,
+            retrieval_quality_min_nonzero_docs,
+        )
+    docs_for_evidence = all_docs if quality_gate_passed else []
+    docs_for_evidence = docs_for_evidence[: max(evidence_max_docs, 0)]
+    evidence_prefix = _build_evidence_prefix(
+        docs_for_evidence,
+        max_docs=evidence_max_docs,
+    )
 
     # Record a single "whole-sentence" span trace for N-best rescoring
     t0 = time.perf_counter()
 
     texts_for_llm = [evidence_prefix + h for h in hypotheses]
-    llm_scores = _rescore_with_llm(model, tokenizer, texts_for_llm, length_penalty)
+    llm_scores = _rescore_with_llm(
+        model,
+        tokenizer,
+        texts_for_llm,
+        length_penalty=length_penalty,
+        max_batch_size=llm_batch_size,
+    )
 
     acoustic_scores = np.array([s[0] for s in scores])
     old_lm_scores = np.array([s[1] for s in scores])
@@ -257,7 +377,17 @@ def nbest_rescore_decode(
     )
 
     best_idx = int(np.argmax(combined))
-    best_hyp = hypotheses[best_idx]
+    sorted_indices = np.argsort(combined)[::-1]
+    second_idx = int(sorted_indices[1]) if len(sorted_indices) > 1 else best_idx
+    margin_vs_second = float(combined[best_idx] - combined[second_idx])
+
+    # Conservative guard: only allow a top-1 change when the best-vs-second
+    # margin is sufficiently strong.
+    effective_best_idx = best_idx
+    if best_idx != 0 and margin_vs_second < change_margin_threshold:
+        effective_best_idx = 0
+
+    best_hyp = hypotheses[effective_best_idx]
     top1_hyp = hypotheses[0]
 
     elapsed = (time.perf_counter() - t0) * 1000
@@ -275,7 +405,9 @@ def nbest_rescore_decode(
         gate_result="uncertain",
         retrieval={
             "query": "(merged evidence for n-best rescoring)",
-            "retrieved_docs": all_docs,
+            "retrieved_docs": docs_for_evidence,
+            "doc_scores": [float(doc_to_score[d]) for d in docs_for_evidence],
+            "n_merged_docs_before_cap": len(all_docs),
             "retrieval_time_ms": sum(
                 rr.retrieval_time_ms for rr in retrieval_results.values()
             ),
@@ -296,8 +428,16 @@ def nbest_rescore_decode(
                 )
             ],
             "selected": best_hyp,
-            "selected_index": best_idx,
-            "changed_from_top1": best_idx != 0,
+            "selected_index": effective_best_idx,
+            "raw_best_index": best_idx,
+            "best_vs_second_margin": margin_vs_second,
+            "change_margin_threshold": float(change_margin_threshold),
+            "change_blocked_by_margin_guard": best_idx != effective_best_idx,
+            "retrieval_quality_gate_enabled": retrieval_quality_gate_enabled,
+            "retrieval_quality_gate_passed": quality_gate_passed,
+            "retrieval_quality_stats": quality_stats,
+            "evidence_docs_used": len(docs_for_evidence),
+            "changed_from_top1": effective_best_idx != 0,
             "change_was_correct": None,
         },
         time_ms=elapsed,

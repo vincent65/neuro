@@ -9,3 +9,17 @@
 *.tar
 .venv-decode
 .venv
+competitionData/*
+derived/*
+speech_5gram/*
+competitionData_readme.txt
+derived_readme.txt
+languageModel_readme.txt
+.venv_lite
+.venv_test
+__pycache__/
+*.egg-info/
+NVIDIA-Linux-x86_64-550.54.15.run
+milestone.pdf
+results_*/
+traces_*/

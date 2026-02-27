@@ -11,10 +11,12 @@ setup(
         "rank_bm25>=0.2.2",
         "transformers>=4.28.0",
         "torch>=1.13.0",
+        "openai>=1.0.0",
         "tabulate>=0.9.0",
     ],
     extras_require={
         "dense": ["sentence-transformers>=2.2.0"],
         "test": ["pytest>=7.0", "pytest-cov"],
+        "paper": ["matplotlib>=3.5.0", "seaborn>=0.12.0"],
     },
 )

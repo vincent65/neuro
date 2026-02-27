@@ -203,6 +203,22 @@ class TestFaithfulnessAudit:
         assert audit["total"]["changes"] == 0
         assert audit["total"]["accuracy"] == 0.0
 
+    def test_prompt_choice_mode_is_tracked_without_double_counting(self):
+        trace = RunTrace()
+        st = SentenceTrace(decision_mode="prompt_choice")
+        st.spans = [
+            SpanTrace(llm_decision={
+                "mode": "prompt_choice",
+                "changed_from_top1": True,
+                "change_was_correct": True,
+            }),
+        ]
+        trace.sentences = [st]
+
+        audit = faithfulness_audit(trace)
+        assert audit["prompt_choice"]["changes"] == 1
+        assert audit["total"]["changes"] == 1
+
 
 # ---------------------------------------------------------------------------
 # Mode breakdown WER

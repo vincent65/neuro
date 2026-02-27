@@ -53,7 +53,7 @@ class TestRunBaselines:
 
         captured_text_batches = []
 
-        def _score_with_context(_model, _tok, texts, length_penalty=0.0):
+        def _score_with_context(_model, _tok, texts, length_penalty=0.0, max_batch_size=0):
             captured_text_batches.append(texts)
             if len(captured_text_batches) == 1:
                 # First sentence: choose second hypothesis ("alpha two").
